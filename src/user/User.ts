@@ -1,5 +1,5 @@
 import { createWebSocketSignaling } from '../utils/signaling'
-import { createPeerConnection } from '../utils/webrtc'
+import { createVideo } from './ui'
 
 export function createUser(container: HTMLDivElement) {
     document.title = 'User'
@@ -8,8 +8,8 @@ export function createUser(container: HTMLDivElement) {
 
 
 async function init(container: HTMLDivElement) {
-    const signaling = await createWebSocketSignaling('user');
-    const peerConnection = createPeerConnection(signaling);
+    const signaling = await createWebSocketSignaling('user')
+    const peerConnection = new RTCPeerConnection()
 
     signaling.onMessage(async (message: any) => {
         if (message.type === 'offer') {
@@ -32,22 +32,13 @@ async function init(container: HTMLDivElement) {
     peerConnection.ondatachannel = (event) => {
         console.log("user ondatachannel")
         dataChannel = event.channel;
-
-        dataChannel.onopen = () => {
-            console.log("Data channel is open on user")
-        }
+        dataChannel.onopen = () => console.log("Data channel is open on user")
     }
 
-    const videoTag = document.createElement('video')
+    const videoTag = createVideo(container)
     peerConnection.ontrack = (event) => {
         console.log('on video received', event)
         videoTag.srcObject = event.streams[0]
-        videoTag.autoplay = true
-        videoTag.style.width = '100%'
-        videoTag.style.height = '100%'
-        container.innerHTML = ''
-        container.appendChild(videoTag)
-        videoTag.addEventListener('click', () => videoTag.play())
     }
 
     videoTag.addEventListener("click", event => {
@@ -64,9 +55,10 @@ async function init(container: HTMLDivElement) {
         const x = clickX * (window.innerWidth / displayWidth)
         const y = clickY * (window.innerHeight / displayHeight)
     
-        console.log(`Mouse clicked x:${x}, y:${y}, ${clickX}x${clickY}`)
-
-        dataChannel.send(JSON.stringify({ x: x, y: y }))
+        if (dataChannel) {
+            console.log(`Mouse clicked x:${x}, y:${y}, ${clickX}x${clickY}`)
+            dataChannel.send(JSON.stringify({ x: x, y: y }))
+        }
     })
 
     console.log('Waiting for video stream...')
