@@ -3,13 +3,11 @@ import { createPeerConnection } from '../utils/webrtc'
 
 export function createUser(container: HTMLDivElement) {
     document.title = 'User'
-    // container.innerHTML = `<p>user</p>`
     init(container)
 }
 
 
 async function init(container: HTMLDivElement) {
-    console.log("init user")
     const signaling = await createWebSocketSignaling('user');
     const peerConnection = createPeerConnection(signaling);
 
@@ -21,10 +19,6 @@ async function init(container: HTMLDivElement) {
             await peerConnection.setLocalDescription(answer);
             signaling.send({ type: 'answer', answer });
         }
-        // else if (message.type === 'candidate') {
-        //     console.log("ICE candidate from broadcast", message);
-        //     await peerConnection.addIceCandidate(new RTCIceCandidate(message.candidate));
-        // }
     })
 
     peerConnection.onicecandidate = event => {
@@ -34,21 +28,46 @@ async function init(container: HTMLDivElement) {
         }
     }
 
-    // let dataChannel: RTCDataChannel
+    let dataChannel: RTCDataChannel
+    peerConnection.ondatachannel = (event) => {
+        console.log("user ondatachannel")
+        dataChannel = event.channel;
+
+        dataChannel.onopen = () => {
+            console.log("Data channel is open on user")
+        }
+    }
+
+    const videoTag = document.createElement('video')
     peerConnection.ontrack = (event) => {
         console.log('on video received', event)
-        const videoElement = document.createElement('video')
-        videoElement.srcObject = event.streams[0]
-        videoElement.autoplay = true
-        videoElement.style.width = '100%'
-        videoElement.style.height = '100%'
+        videoTag.srcObject = event.streams[0]
+        videoTag.autoplay = true
+        videoTag.style.width = '100%'
+        videoTag.style.height = '100%'
         container.innerHTML = ''
-        container.appendChild(videoElement)
-        videoElement.addEventListener('click', () => videoElement.play())
+        container.appendChild(videoTag)
+        videoTag.addEventListener('click', () => videoTag.play())
+    }
 
-        // enableMouseTracking(videoElement);
-        // dataChannel = peerConnection.createDataChannel("mouse-coordinates");
-    };
+    videoTag.addEventListener("click", event => {
+        const rect = videoTag.getBoundingClientRect()
+        const displayWidth = rect.width
+        const displayHeight = rect.height
+    
+        const actualWidth = videoTag.videoWidth
+        const actualHeight = videoTag.videoHeight
+    
+        const clickX = event.clientX - rect.left
+        const clickY = event.clientY - rect.top
+    
+        const x = clickX * (actualWidth / displayWidth)
+        const y = clickY * (actualHeight / displayHeight)
+    
+        console.log(`Mouse clicked x:${x}, y:${y}, ${clickX}x${clickY}`)
+
+        dataChannel.send(JSON.stringify({ x, y }))
+    })
 
     console.log('Waiting for video stream...')
 }

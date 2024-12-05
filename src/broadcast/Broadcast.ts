@@ -7,20 +7,31 @@ export function createBroadcast(container: HTMLDivElement) {
     // document.body.style.cursor = 'none'
     container.innerHTML = `<p>broadcast</p>`
 
-    init()
+    init(container)
 }
 
 
-async function init() {
+async function init(container: HTMLDivElement) {
     const signaling = await createWebSocketSignaling('broadcast');
     const peerConnection = createPeerConnection(signaling);
 
     // @ts-ignore
-    const stream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true, preferCurrentTab: true,  });
+    const stream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: false, preferCurrentTab: true,  });
     stream.getTracks().forEach(track => peerConnection.addTrack(track, stream));
     console.log("Stream added. send to:", peerConnection.getSenders().length);
 
-    // Create an offer for the user client
+    const dataChannel = peerConnection.createDataChannel("mouse-coordinates");
+ 
+    dataChannel.onopen = () => {
+        console.log("Data channel for broadcast is open!");
+    }
+    
+    dataChannel.onmessage = (event) => {
+        const { x, y } = JSON.parse(event.data);
+        console.log(`Received x:${x}, y:${y}`);
+    }
+
+    // SDP offer
     const offer = await peerConnection.createOffer();
     await peerConnection.setLocalDescription(offer);
     signaling.send({ type: 'offer', offer });
@@ -34,21 +45,5 @@ async function init() {
             console.log("ICE candidate from user", message);
             await peerConnection.addIceCandidate(new RTCIceCandidate(message.candidate));
         }
-    });
-
-    // peerConnection.onicecandidate = event => {
-    //     if (event.candidate) {
-    //         console.log("send ice candidate")
-    //         signaling.send({ type: "candidate", candidate: event.candidate })
-    //     }
-    // }
-
-    // let dataChannel: RTCDataChannel
-    // peerConnection.ondatachannel = (event) => {
-    //     dataChannel = event.channel;
-
-    //     dataChannel.onopen = () => {
-    //         console.log("Data channel is open on user broadcast");
-    //     }
-    // }
+    })
 }
