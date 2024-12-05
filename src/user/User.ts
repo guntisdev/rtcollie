@@ -55,18 +55,18 @@ async function init(container: HTMLDivElement) {
         const displayWidth = rect.width
         const displayHeight = rect.height
     
-        const actualWidth = videoTag.videoWidth
-        const actualHeight = videoTag.videoHeight
+        // const actualWidth = videoTag.videoWidth
+        // const actualHeight = videoTag.videoHeight
     
         const clickX = event.clientX - rect.left
         const clickY = event.clientY - rect.top
     
-        const x = clickX * (actualWidth / displayWidth)
-        const y = clickY * (actualHeight / displayHeight)
+        const x = clickX * (window.innerWidth / displayWidth)
+        const y = clickY * (window.innerHeight / displayHeight)
     
         console.log(`Mouse clicked x:${x}, y:${y}, ${clickX}x${clickY}`)
 
-        dataChannel.send(JSON.stringify({ x, y }))
+        dataChannel.send(JSON.stringify({ x: x, y: y }))
     })
 
     console.log('Waiting for video stream...')
